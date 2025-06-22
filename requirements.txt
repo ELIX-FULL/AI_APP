@@ -1,0 +1,6 @@
+protobuf~=4.25.8
+PySocks~=1.7.1
+aiogram~=3.20.0.post0
+SQLAlchemy~=2.0.41
+pillow~=10.3.0
+environs~=14.2.0
