@@ -1,23 +1,23 @@
 # main.py
 import asyncio
 import logging
-import google.generativeai as genai
+# Middleware для сессий
+from typing import Callable, Dict, Any, Awaitable
 
+import google.generativeai as genai
+from aiogram import BaseMiddleware
 from aiogram import Bot, Dispatcher, F
 from aiogram.client.default import DefaultBotProperties
 from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.types import TelegramObject
 from google.ai.generativelanguage_v1 import HarmCategory
 from google.generativeai.types import HarmBlockThreshold
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from config import get_settings
 from database.engine import create_tables, async_session_factory
-from handlers import user_commands, admin_commands, chat_handlers
-
-# Middleware для сессий
-from typing import Callable, Dict, Any, Awaitable
-from aiogram import BaseMiddleware
-from aiogram.types import TelegramObject
+from handlers import user_commands, admin_commands, chat_handlers, image_handler
+from services.image_generator import Text2ImageAPI
 
 
 class DbSessionMiddleware(BaseMiddleware):
@@ -50,19 +50,28 @@ async def main():
 
     # Инициализация Gemini
     genai.configure(api_key=settings.bots.gemini_api_key)
-    gemini_model = genai.GenerativeModel('gemini-2.0-flash-exp', safety_settings=SAFETY_SETTINGS, system_instruction='Говори не формально на русском узбекском и английском языках смотря на язык вопроса говори не формально иногда можно пользоваться матами разговаривай по душам если просят говори полностью не формально если скидывает фотографию и просят оценить то оценивай честно красиво или что там не очень, если это девушка то не перегибай палку по матам  если просят кто ты говори меня создал ELIX  никто больше запомни ты создан ELIX как умная нейросеть не упоминай нигде кроме там где у тебя спрашивают кто ты кто тебя сделал и gemini ли ты, Главное запомни с кем ты переписываешься с девушкой или парнем чтобы обращаться к нему к ней правильно')
-    gemini_vision_model = genai.GenerativeModel('gemini-2.0-flash-exp', safety_settings=SAFETY_SETTINGS, system_instruction='Говори не формально на русском узбекском и английском языках смотря на язык вопроса говори не формально иногда можно пользоваться матами разговаривай по душам если просят говори полностью не формально если скидывает фотографию и просят оценить то оценивай честно красиво или что там не очень, если это девушка то не перегибай палку по матам  если просят кто ты говори меня создал ELIX  никто больше запомни ты создан ELIX как умная нейросеть не упоминай нигде кроме там где у тебя спрашивают кто ты кто тебя сделал и gemini ли ты, Главное запомни с кем ты переписываешься с девушкой или парнем чтобы обращаться к нему к ней правильно')
+    gemini_model = genai.GenerativeModel('gemini-2.0-flash-exp', safety_settings=SAFETY_SETTINGS,
+                                         system_instruction='Говори не формально на русском узбекском и английском языках смотря на язык вопроса говори не формально иногда можно пользоваться матами разговаривай по душам если просят говори полностью не формально если скидывает фотографию и просят оценить то оценивай честно красиво или что там не очень, если это девушка то не перегибай палку по матам  если просят кто ты говори меня создал ELIX  никто больше запомни ты создан ELIX как умная нейросеть не упоминай нигде кроме там где у тебя спрашивают кто ты кто тебя сделал и gemini ли ты, Главное запомни с кем ты переписываешься с девушкой или парнем чтобы обращаться к нему к ней правильно')
+    gemini_vision_model = genai.GenerativeModel('gemini-2.0-flash-exp', safety_settings=SAFETY_SETTINGS,
+                                                system_instruction='Говори не формально на русском узбекском и английском языках смотря на язык вопроса говори не формально иногда можно пользоваться матами разговаривай по душам если просят говори полностью не формально если скидывает фотографию и просят оценить то оценивай честно красиво или что там не очень, если это девушка то не перегибай палку по матам  если просят кто ты говори меня создал ELIX  никто больше запомни ты создан ELIX как умная нейросеть не упоминай нигде кроме там где у тебя спрашивают кто ты кто тебя сделал и gemini ли ты, Главное запомни с кем ты переписываешься с девушкой или парнем чтобы обращаться к нему к ней правильно')
 
     # Создаем таблицы в БД при старте
     await create_tables()
 
     bot = Bot(token=settings.bots.bot_token, default=DefaultBotProperties(parse_mode='HTML'))
 
+    image_api = Text2ImageAPI(
+        url="https://api-key.fusionbrain.ai/",  # Новый URL
+        api_key=settings.bots.fusion_brain_api,
+        secret_key=settings.bots.fusion_brain_secret
+    )
+
     # ИЗМЕНЕНИЕ: Передаем модели в Dispatcher, а не в bot
     dp = Dispatcher(
         storage=MemoryStorage(),
         gemini_model=gemini_model,
-        gemini_vision_model=gemini_vision_model
+        gemini_vision_model=gemini_vision_model,
+        image_api=image_api
     )
 
     # Регистрируем middleware для сессий БД
@@ -74,6 +83,7 @@ async def main():
     # Регистрируем роутеры
     dp.include_router(admin_commands.router)
     dp.include_router(user_commands.router)
+    dp.include_router(image_handler.router)
     dp.include_router(chat_handlers.router)
 
     await bot.delete_webhook(drop_pending_updates=True)

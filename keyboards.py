@@ -7,6 +7,9 @@ def main_menu_keyboard():
     builder = InlineKeyboardBuilder()
     builder.row(InlineKeyboardButton(text="👤 Мой профиль", callback_data="my_profile"))
     builder.row(InlineKeyboardButton(text="🤖 Задать вопрос ИИ", callback_data="start_dialog_ai"))
+    builder.row(InlineKeyboardButton(text="🎨 Сгенерировать изображение", callback_data="generate_image"))
+    # builder.row(InlineKeyboardButton(text="📹 Сгенерировать видео", callback_data="generate_video"))
+    # builder.row(InlineKeyboardButton(text="🎵 Создать музыку", callback_data="generate_music"))
     return builder.as_markup()
 
 def chat_actions_keyboard():
