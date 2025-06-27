@@ -1,7 +1,7 @@
 aiogram
 SQLAlchemy
 aiosqlite
-google-genai
 Pillow
 python-dotenv
 aiohttp
+google-generativeai
